@@ -124,19 +124,17 @@ pip install -r requirements.txt
 
 ### Quick Start
 
-Run the end-to-end demonstration:
-
+**Run the demo:**
 ```bash
 python src/demo.py
 ```
 
-This will:
-1. Parse a natural language trading rule
-2. Convert it to DSL
-3. Parse the DSL into an AST
-4. Generate Python code
-5. Execute the strategy on sample data
-6. Display backtest results
+**Run DSL examples:**
+```bash
+python src/run_dsl_examples.py
+```
+
+This runs 7 example DSL strategies and saves output to `dsl_examples_output.txt`.
 
 ### Programmatic Usage
 
@@ -249,31 +247,29 @@ The backtest simulator calculates:
 
 ## Testing
 
-### Manual Testing
+**Run DSL examples:**
+```bash
+python src/run_dsl_examples.py
+```
 
-Test individual components:
+**Run demo:**
+```bash
+python src/demo.py
+```
 
+**Test individual components:**
 ```python
-# Test DSL parser
 from src.dsl_parser import parse_dsl_to_ast
+from src.indicators import sma, rsi
+import pandas as pd
+
+# Test DSL parser
 ast = parse_dsl_to_ast("ENTRY:\nclose > sma(close, 20)")
 
 # Test indicators
-from src.indicators import sma, rsi
-import pandas as pd
 df = pd.read_csv("data/sample_data.csv", index_col='date', parse_dates=True)
 sma_values = sma(df['close'], 20)
 rsi_values = rsi(df['close'], 14)
-```
-
-### End-to-End Testing
-
-Run the demo script with different natural language inputs:
-
-```python
-from src.demo import run_demo
-
-run_demo("Buy when close > sma(close, 20) and volume > 1M")
 ```
 
 ## Design Decisions
