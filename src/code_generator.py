@@ -125,6 +125,11 @@ class CodeGenerator:
             
             if expr_type == "series":
                 series_name = expr.get("value", "")
+                # Handle Token objects
+                if hasattr(series_name, 'value'):
+                    series_name = str(series_name.value)
+                elif not isinstance(series_name, str):
+                    series_name = str(series_name)
                 if series_name not in df.columns:
                     raise ValueError(f"Series '{series_name}' not found in DataFrame")
                 return df[series_name]
@@ -133,6 +138,9 @@ class CodeGenerator:
                 return self._evaluate_indicator(expr, df)
             
             elif expr_type == "function_call":
+                # Ensure this is actually a function call node
+                if "name" not in expr:
+                    raise ValueError(f"Invalid function_call node: missing 'name' field. Node: {expr}")
                 return self._evaluate_function_call(expr, df)
             
             elif expr_type == "binary_op":
@@ -141,8 +149,18 @@ class CodeGenerator:
             elif expr_type == "boolean_op":
                 return self._evaluate_boolean_op(expr, df)
             
+            elif expr_type == "":
+                # Try to infer type from structure
+                if "name" in expr and "args" in expr:
+                    # Looks like a function call
+                    return self._evaluate_function_call(expr, df)
+                elif "value" in expr:
+                    # Might be a series
+                    return self._evaluate_expression({"type": "series", "value": expr.get("value")}, df)
+                else:
+                    raise ValueError(f"Expression node missing 'type' field: {expr}")
             else:
-                raise ValueError(f"Unknown expression type: {expr_type}")
+                raise ValueError(f"Unknown expression type: {expr_type}. Node: {expr}")
         
         elif isinstance(expr, (int, float)):
             return pd.Series(expr, index=df.index)
@@ -180,6 +198,11 @@ class CodeGenerator:
     def _evaluate_function_call(self, node: Dict[str, Any], df: pd.DataFrame) -> pd.Series:
         """Evaluate a function call node."""
         name = node.get("name", "")
+        # Handle Token objects
+        if hasattr(name, 'value'):
+            name = str(name.value)
+        elif not isinstance(name, str):
+            name = str(name)
         args = node.get("args", [])
         
         # Time functions

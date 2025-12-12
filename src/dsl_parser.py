@@ -22,7 +22,10 @@ rule: comparison | "(" rule_list ")"
 
 comparison: expression operator expression
 
-operator: ">" | "<" | ">=" | "<=" | "==" | "!=" | "crosses_above" | "crosses_below"
+operator: ">" | "<" | ">=" | "<=" | "==" | "!=" | CROSSES_ABOVE | CROSSES_BELOW
+
+CROSSES_ABOVE: "crosses_above"
+CROSSES_BELOW: "crosses_below"
 
 boolean_op: "AND" | "OR"
 
@@ -45,15 +48,22 @@ function_call: time_function
              | cross_function
              | change_function
 
-time_function: "yesterday" "(" series ")"
-             | "last_week" "(" series ")"
-             | "n_days_ago" "(" series "," number ")"
+time_function: yesterday_func
+             | last_week_func
+             | n_days_ago_func
 
-cross_function: "crosses_above" "(" expression "," expression ")"
-              | "crosses_below" "(" expression "," expression ")"
+yesterday_func: "yesterday" "(" series ")"
+last_week_func: "last_week" "(" series ")"
+n_days_ago_func: "n_days_ago" "(" series "," number ")"
 
-change_function: "change" "(" series "," number ")"
-               | "percent_change" "(" series "," number ")"
+cross_function: CROSSES_ABOVE "(" expression "," expression ")"
+              | CROSSES_BELOW "(" expression "," expression ")"
+
+change_function: change_func
+               | percent_change_func
+
+change_func: "change" "(" series "," number ")"
+percent_change_func: "percent_change" "(" series "," number ")"
 
 number: SIGNED_NUMBER
 percentage: SIGNED_NUMBER "%"
@@ -145,8 +155,14 @@ class DSLTransformer(Transformer):
         """Series reference."""
         if not items or len(items) == 0:
             raise ValueError("Series rule matched but no items found")
-        # Handle both token and string inputs
-        value = items[0] if isinstance(items[0], str) else str(items[0])
+        # Handle both token and string inputs - convert Token to string
+        item = items[0]
+        if hasattr(item, 'value'):  # Token object
+            value = str(item.value)
+        elif isinstance(item, str):
+            value = item
+        else:
+            value = str(item)
         return {
             "type": "series",
             "value": value
@@ -194,33 +210,75 @@ class DSLTransformer(Transformer):
         return items[0]
     
     def time_function(self, items):
-        """Time-based function."""
-        func_name = items[0]
-        series_node = items[1]
-        series_value = series_node.get("value") if isinstance(series_node, dict) else str(series_node)
+        """Time-based function - delegates to specific function."""
+        return items[0]
+    
+    def yesterday_func(self, items):
+        """Yesterday function."""
+        # Items: [series_node] (parentheses and function name are not in items)
+        series_node = items[0] if items else {"type": "series", "value": "close"}
+        if isinstance(series_node, dict):
+            series_value = series_node.get("value", "close")
+            # Handle Token objects
+            if hasattr(series_value, 'value'):
+                series_value = str(series_value.value)
+            elif not isinstance(series_value, str):
+                series_value = str(series_value)
+        else:
+            series_value = str(series_node)
+        return {
+            "type": "function_call",
+            "name": "yesterday",
+            "args": [{"type": "series", "value": series_value}]
+        }
+    
+    def last_week_func(self, items):
+        """Last week function."""
+        series_node = items[0] if items else {"type": "series", "value": "close"}
+        if isinstance(series_node, dict):
+            series_value = series_node.get("value", "close")
+            # Handle Token objects
+            if hasattr(series_value, 'value'):
+                series_value = str(series_value.value)
+            elif not isinstance(series_value, str):
+                series_value = str(series_value)
+        else:
+            series_value = str(series_node)
+        return {
+            "type": "function_call",
+            "name": "last_week",
+            "args": [{"type": "series", "value": series_value}]
+        }
+    
+    def n_days_ago_func(self, items):
+        """N days ago function."""
+        # Items: [series_node, number] or [series_node, ',', number]
+        series_node = items[0] if items else {"type": "series", "value": "close"}
+        if isinstance(series_node, dict):
+            series_value = series_node.get("value", "close")
+            # Handle Token objects
+            if hasattr(series_value, 'value'):
+                series_value = str(series_value.value)
+            elif not isinstance(series_value, str):
+                series_value = str(series_value)
+        else:
+            series_value = str(series_node)
         
-        if func_name == "yesterday":
-            return {
-                "type": "function_call",
-                "name": "yesterday",
-                "args": [{"type": "series", "value": series_value}]
-            }
-        elif func_name == "last_week":
-            return {
-                "type": "function_call",
-                "name": "last_week",
-                "args": [{"type": "series", "value": series_value}]
-            }
-        elif func_name == "n_days_ago":
-            n = items[2] if len(items) > 2 else 1
-            return {
-                "type": "function_call",
-                "name": "n_days_ago",
-                "args": [
-                    {"type": "series", "value": series_value},
-                    n
-                ]
-            }
+        # Find the number (skip commas)
+        n_value = 1
+        for item in items[1:]:
+            if isinstance(item, (int, float)):
+                n_value = item
+                break
+        
+        return {
+            "type": "function_call",
+            "name": "n_days_ago",
+            "args": [
+                {"type": "series", "value": series_value},
+                n_value
+            ]
+        }
     
     def cross_function(self, items):
         """Cross function."""
@@ -235,18 +293,66 @@ class DSLTransformer(Transformer):
         }
     
     def change_function(self, items):
+        """Change function - delegates to specific function."""
+        return items[0]
+    
+    def change_func(self, items):
         """Change function."""
-        func_name = str(items[0])
-        series_node = items[1]
-        n = items[2] if len(items) > 2 else 1
-        series_value = series_node.get("value") if isinstance(series_node, dict) else str(series_node)
+        # Items: [series_node, number] or [series_node, ',', number]
+        series_node = items[0] if items else {"type": "series", "value": "close"}
+        if isinstance(series_node, dict):
+            series_value = series_node.get("value", "close")
+            # Handle Token objects
+            if hasattr(series_value, 'value'):
+                series_value = str(series_value.value)
+            elif not isinstance(series_value, str):
+                series_value = str(series_value)
+        else:
+            series_value = str(series_node)
+        
+        # Find the number (skip commas)
+        n_value = 1
+        for item in items[1:]:
+            if isinstance(item, (int, float)):
+                n_value = item
+                break
         
         return {
             "type": "function_call",
-            "name": func_name,
+            "name": "change",
             "args": [
                 {"type": "series", "value": series_value},
-                n
+                n_value
+            ]
+        }
+    
+    def percent_change_func(self, items):
+        """Percent change function."""
+        # Items: [series_node, number] or [series_node, ',', number]
+        series_node = items[0] if items else {"type": "series", "value": "close"}
+        if isinstance(series_node, dict):
+            series_value = series_node.get("value", "close")
+            # Handle Token objects
+            if hasattr(series_value, 'value'):
+                series_value = str(series_value.value)
+            elif not isinstance(series_value, str):
+                series_value = str(series_value)
+        else:
+            series_value = str(series_node)
+        
+        # Find the number (skip commas)
+        n_value = 1
+        for item in items[1:]:
+            if isinstance(item, (int, float)):
+                n_value = item
+                break
+        
+        return {
+            "type": "function_call",
+            "name": "percent_change",
+            "args": [
+                {"type": "series", "value": series_value},
+                n_value
             ]
         }
     

@@ -1,0 +1,937 @@
+﻿================================================================================
+DSL EXAMPLES - Trading Strategy Execution
+================================================================================
+
+Loading sample data...
+[OK] Loaded 260 days of data
+  Date range: 2023-01-02 00:00:00 to 2023-12-29 00:00:00
+
+================================================================================
+EXAMPLE 1: Simple Moving Average Crossover
+================================================================================
+
+--- DSL Code ---
+ENTRY:
+close crosses_above sma(close, 20)
+
+EXIT:
+close crosses_below sma(close, 20)
+
+--- Parsed AST ---
+{
+  "entry": [
+    {
+      "type": "binary_op",
+      "operator": "crosses_above",
+      "left": {
+        "type": "series",
+        "value": "close"
+      },
+      "right": {
+        "type": "indicator",
+        "name": "sma",
+        "series": "close",
+        "period": 20
+      }
+    }
+  ],
+  "exit": [
+    {
+      "type": "binary_op",
+      "operator": "crosses_below",
+      "left": {
+        "type": "series",
+        "value": "close"
+      },
+      "right": {
+        "type": "indicator",
+        "name": "sma",
+        "series": "close",
+        "period": 20
+      }
+    }
+  ]
+}
+
+--- Code Generation ---
+[OK] Python evaluator function generated successfully
+
+--- Signal Generation ---
+[OK] Generated signals:
+  - Entry signals: 18 days
+  - Exit signals: 18 days
+
+  Sample signals (first 30 days with any signal):
+            entry   exit
+date                    
+2023-01-03  False   True
+2023-01-04   True  False
+2023-01-19  False   True
+2023-03-24   True  False
+2023-03-29  False   True
+2023-04-03   True  False
+2023-04-21  False   True
+2023-05-09   True  False
+2023-05-10  False   True
+2023-05-30   True  False
+2023-06-05  False   True
+2023-06-07   True  False
+2023-07-03  False   True
+2023-08-01   True  False
+2023-08-02  False   True
+2023-08-03   True  False
+2023-08-07  False   True
+2023-08-08   True  False
+2023-09-22  False   True
+2023-09-26   True  False
+2023-09-28  False   True
+2023-10-11   True  False
+2023-10-16  False   True
+2023-10-18   True  False
+2023-11-16  False   True
+2023-11-17   True  False
+2023-11-20  False   True
+2023-11-24   True  False
+2023-11-28  False   True
+2023-11-29   True  False
+
+--- Backtest Results ---
+[OK] Backtest completed:
+  - Total Return: $18,085.53 (18.09%)
+  - Max Drawdown: $8,961.46 (8.79%)
+  - Number of Trades: 18
+  - Win Rate: 27.78%
+  - Average Return per Trade: 1.00%
+  - Sharpe Ratio: 3.13
+
+================================================================================
+EXAMPLE 2: RSI Oversold Entry with Volume Filter
+================================================================================
+
+--- DSL Code ---
+ENTRY:
+rsi(close, 14) < 30 AND volume > 1000000
+
+EXIT:
+rsi(close, 14) > 70
+
+--- Parsed AST ---
+{
+  "entry": [
+    {
+      "type": "boolean_op",
+      "operator": "AND",
+      "left": {
+        "type": "binary_op",
+        "operator": ">",
+        "left": {
+          "type": "indicator",
+          "name": "rsi",
+          "series": "close",
+          "period": 14
+        },
+        "right": 30
+      },
+      "right": {
+        "type": "binary_op",
+        "operator": ">",
+        "left": {
+          "type": "series",
+          "value": "volume"
+        },
+        "right": 1000000
+      }
+    }
+  ],
+  "exit": [
+    {
+      "type": "binary_op",
+      "operator": ">",
+      "left": {
+        "type": "indicator",
+        "name": "rsi",
+        "series": "close",
+        "period": 14
+      },
+      "right": 70
+    }
+  ]
+}
+
+--- Code Generation ---
+[OK] Python evaluator function generated successfully
+
+--- Signal Generation ---
+[OK] Generated signals:
+  - Entry signals: 159 days
+  - Exit signals: 41 days
+
+  Sample signals (first 30 days with any signal):
+            entry   exit
+date                    
+2023-01-04  False   True
+2023-01-05   True   True
+2023-01-06   True   True
+2023-01-09   True   True
+2023-01-10   True   True
+2023-01-11   True   True
+2023-01-12   True   True
+2023-01-13  False   True
+2023-01-16   True   True
+2023-01-17   True   True
+2023-01-18   True   True
+2023-01-19   True  False
+2023-01-20   True  False
+2023-01-24   True  False
+2023-01-25   True  False
+2023-02-14   True  False
+2023-02-16   True  False
+2023-02-17   True  False
+2023-02-20   True  False
+2023-02-21   True  False
+2023-02-22   True  False
+2023-02-23   True  False
+2023-03-01   True  False
+2023-03-03   True  False
+2023-03-15   True  False
+2023-03-17   True  False
+2023-03-20   True  False
+2023-03-24   True  False
+2023-03-28   True  False
+2023-03-29   True  False
+
+--- Backtest Results ---
+[OK] Backtest completed:
+  - Total Return: $15,519.33 (15.52%)
+  - Max Drawdown: $27,599.11 (26.45%)
+  - Number of Trades: 32
+  - Win Rate: 65.62%
+  - Average Return per Trade: 0.48%
+  - Sharpe Ratio: 1.39
+
+================================================================================
+EXAMPLE 3: Price Above Moving Average with Volume Confirmation
+================================================================================
+
+--- DSL Code ---
+ENTRY:
+close > sma(close, 50) AND volume > yesterday(volume)
+
+EXIT:
+close < sma(close, 50)
+
+--- Parsed AST ---
+{
+  "entry": [
+    {
+      "type": "boolean_op",
+      "operator": "AND",
+      "left": {
+        "type": "binary_op",
+        "operator": ">",
+        "left": {
+          "type": "series",
+          "value": "close"
+        },
+        "right": {
+          "type": "indicator",
+          "name": "sma",
+          "series": "close",
+          "period": 50
+        }
+      },
+      "right": {
+        "type": "binary_op",
+        "operator": ">",
+        "left": {
+          "type": "series",
+          "value": "volume"
+        },
+        "right": {
+          "type": "function_call",
+          "name": "yesterday",
+          "args": [
+            {
+              "type": "series",
+              "value": "volume"
+            }
+          ]
+        }
+      }
+    }
+  ],
+  "exit": [
+    {
+      "type": "binary_op",
+      "operator": ">",
+      "left": {
+        "type": "series",
+        "value": "close"
+      },
+      "right": {
+        "type": "indicator",
+        "name": "sma",
+        "series": "close",
+        "period": 50
+      }
+    }
+  ]
+}
+
+--- Code Generation ---
+[OK] Python evaluator function generated successfully
+
+--- Signal Generation ---
+[OK] Generated signals:
+  - Entry signals: 69 days
+  - Exit signals: 141 days
+
+  Sample signals (first 30 days with any signal):
+            entry  exit
+date                   
+2023-01-04  False  True
+2023-01-05   True  True
+2023-01-06  False  True
+2023-01-09   True  True
+2023-01-10   True  True
+2023-01-11  False  True
+2023-01-12  False  True
+2023-01-13  False  True
+2023-01-16   True  True
+2023-01-17   True  True
+2023-01-18   True  True
+2023-04-13   True  True
+2023-05-09   True  True
+2023-06-01  False  True
+2023-06-02   True  True
+2023-06-08  False  True
+2023-06-09  False  True
+2023-06-12   True  True
+2023-06-13  False  True
+2023-06-15   True  True
+2023-06-16  False  True
+2023-06-19  False  True
+2023-06-20  False  True
+2023-06-21   True  True
+2023-06-22  False  True
+2023-06-23  False  True
+2023-06-26   True  True
+2023-06-27  False  True
+2023-06-28   True  True
+2023-06-29  False  True
+
+--- Backtest Results ---
+[OK] Backtest completed:
+  - Total Return: $-8,757.28 (-8.76%)
+  - Max Drawdown: $32,046.39 (30.84%)
+  - Number of Trades: 69
+  - Win Rate: 62.32%
+  - Average Return per Trade: -0.13%
+  - Sharpe Ratio: -0.64
+
+================================================================================
+EXAMPLE 4: Multiple Conditions with OR Logic
+================================================================================
+
+--- DSL Code ---
+ENTRY:
+rsi(close, 14) < 30 OR close crosses_above yesterday(high)
+
+EXIT:
+rsi(close, 14) > 70 OR close crosses_below yesterday(low)
+
+--- Parsed AST ---
+{
+  "entry": [
+    {
+      "type": "boolean_op",
+      "operator": "AND",
+      "left": {
+        "type": "binary_op",
+        "operator": ">",
+        "left": {
+          "type": "indicator",
+          "name": "rsi",
+          "series": "close",
+          "period": 14
+        },
+        "right": 30
+      },
+      "right": {
+        "type": "binary_op",
+        "operator": "crosses_above",
+        "left": {
+          "type": "series",
+          "value": "close"
+        },
+        "right": {
+          "type": "function_call",
+          "name": "yesterday",
+          "args": [
+            {
+              "type": "series",
+              "value": "high"
+            }
+          ]
+        }
+      }
+    }
+  ],
+  "exit": [
+    {
+      "type": "boolean_op",
+      "operator": "AND",
+      "left": {
+        "type": "binary_op",
+        "operator": ">",
+        "left": {
+          "type": "indicator",
+          "name": "rsi",
+          "series": "close",
+          "period": 14
+        },
+        "right": 70
+      },
+      "right": {
+        "type": "binary_op",
+        "operator": "crosses_below",
+        "left": {
+          "type": "series",
+          "value": "close"
+        },
+        "right": {
+          "type": "function_call",
+          "name": "yesterday",
+          "args": [
+            {
+              "type": "series",
+              "value": "low"
+            }
+          ]
+        }
+      }
+    }
+  ]
+}
+
+--- Code Generation ---
+[OK] Python evaluator function generated successfully
+
+--- Signal Generation ---
+[OK] Generated signals:
+  - Entry signals: 47 days
+  - Exit signals: 3 days
+
+  Sample signals (first 30 days with any signal):
+            entry   exit
+date                    
+2023-01-04   True  False
+2023-01-10   True  False
+2023-01-13   True  False
+2023-01-16  False   True
+2023-02-14   True  False
+2023-02-17   True  False
+2023-02-27   True  False
+2023-03-16   True  False
+2023-03-23   True  False
+2023-03-31   True  False
+2023-04-05   True  False
+2023-04-11   True  False
+2023-04-13   True  False
+2023-04-17   True  False
+2023-04-26   True  False
+2023-05-02   True  False
+2023-05-09   True  False
+2023-05-30   True  False
+2023-06-08   True  False
+2023-06-15   True  False
+2023-06-21   True  False
+2023-06-23   True  False
+2023-07-10   True  False
+2023-07-13   True  False
+2023-07-18   True  False
+2023-07-24   True  False
+2023-07-27   True  False
+2023-08-08   True  False
+2023-08-11   True  False
+2023-08-16   True  False
+
+--- Backtest Results ---
+[OK] Backtest completed:
+  - Total Return: $25,298.69 (25.30%)
+  - Max Drawdown: $5,455.79 (4.52%)
+  - Number of Trades: 4
+  - Win Rate: 75.00%
+  - Average Return per Trade: 6.32%
+  - Sharpe Ratio: 15.36
+
+  Trade Log:
+    Trade 1:
+      Enter: 2023-01-04 at $101.39
+      Exit:  2023-01-16 at $108.70
+      P&L: $7.31 (7.21%)
+    Trade 2:
+      Enter: 2023-02-14 at $91.68
+      Exit:  2023-11-02 at $103.13
+      P&L: $11.45 (12.49%)
+    Trade 3:
+      Enter: 2023-11-06 at $109.64
+      Exit:  2023-11-07 at $104.68
+      P&L: $-4.96 (-4.52%)
+    Trade 4:
+      Enter: 2023-11-08 at $105.89
+      Exit:  2023-12-29 at $116.61
+      P&L: $10.72 (10.12%)
+
+================================================================================
+EXAMPLE 5: Percentage Change Strategy
+================================================================================
+
+--- DSL Code ---
+ENTRY:
+percent_change(close, 5) > 5
+
+EXIT:
+percent_change(close, 3) < -3
+
+--- Parsed AST ---
+{
+  "entry": [
+    {
+      "type": "binary_op",
+      "operator": ">",
+      "left": {
+        "type": "function_call",
+        "name": "percent_change",
+        "args": [
+          {
+            "type": "series",
+            "value": "close"
+          },
+          5
+        ]
+      },
+      "right": 5
+    }
+  ],
+  "exit": [
+    {
+      "type": "binary_op",
+      "operator": ">",
+      "left": {
+        "type": "function_call",
+        "name": "percent_change",
+        "args": [
+          {
+            "type": "series",
+            "value": "close"
+          },
+          3
+        ]
+      },
+      "right": -3
+    }
+  ]
+}
+
+--- Code Generation ---
+[OK] Python evaluator function generated successfully
+
+--- Signal Generation ---
+[OK] Generated signals:
+  - Entry signals: 29 days
+  - Exit signals: 218 days
+
+  Sample signals (first 30 days with any signal):
+            entry  exit
+date                   
+2023-01-05  False  True
+2023-01-06  False  True
+2023-01-09  False  True
+2023-01-10   True  True
+2023-01-11   True  True
+2023-01-12  False  True
+2023-01-13  False  True
+2023-01-16  False  True
+2023-01-17  False  True
+2023-01-18  False  True
+2023-01-25  False  True
+2023-01-26  False  True
+2023-01-31  False  True
+2023-02-01  False  True
+2023-02-02  False  True
+2023-02-07  False  True
+2023-02-08  False  True
+2023-02-09  False  True
+2023-02-10  False  True
+2023-02-13  False  True
+2023-02-14  False  True
+2023-02-15  False  True
+2023-02-16  False  True
+2023-02-17  False  True
+2023-02-21  False  True
+2023-02-27  False  True
+2023-02-28  False  True
+2023-03-01  False  True
+2023-03-02  False  True
+2023-03-08  False  True
+
+--- Backtest Results ---
+[OK] Backtest completed:
+  - Total Return: $-6,585.17 (-6.59%)
+  - Max Drawdown: $15,107.20 (14.81%)
+  - Number of Trades: 29
+  - Win Rate: 37.93%
+  - Average Return per Trade: -0.23%
+  - Sharpe Ratio: -1.80
+
+================================================================================
+EXAMPLE 6: Complex Multi-Condition Entry
+================================================================================
+
+--- DSL Code ---
+ENTRY:
+close > ema(close, 20) AND volume > 1000000 AND rsi(close, 14) > 50 AND rsi(close, 14) < 70
+
+EXIT:
+close < ema(close, 20) OR rsi(close, 14) > 80
+
+--- Parsed AST ---
+{
+  "entry": [
+    {
+      "type": "boolean_op",
+      "operator": "AND",
+      "left": {
+        "type": "boolean_op",
+        "operator": "AND",
+        "left": {
+          "type": "boolean_op",
+          "operator": "AND",
+          "left": {
+            "type": "binary_op",
+            "operator": ">",
+            "left": {
+              "type": "series",
+              "value": "close"
+            },
+            "right": {
+              "type": "indicator",
+              "name": "ema",
+              "series": "close",
+              "period": 20
+            }
+          },
+          "right": {
+            "type": "binary_op",
+            "operator": ">",
+            "left": {
+              "type": "series",
+              "value": "volume"
+            },
+            "right": 1000000
+          }
+        },
+        "right": {
+          "type": "binary_op",
+          "operator": ">",
+          "left": {
+            "type": "indicator",
+            "name": "rsi",
+            "series": "close",
+            "period": 14
+          },
+          "right": 50
+        }
+      },
+      "right": {
+        "type": "binary_op",
+        "operator": ">",
+        "left": {
+          "type": "indicator",
+          "name": "rsi",
+          "series": "close",
+          "period": 14
+        },
+        "right": 70
+      }
+    }
+  ],
+  "exit": [
+    {
+      "type": "boolean_op",
+      "operator": "AND",
+      "left": {
+        "type": "binary_op",
+        "operator": ">",
+        "left": {
+          "type": "series",
+          "value": "close"
+        },
+        "right": {
+          "type": "indicator",
+          "name": "ema",
+          "series": "close",
+          "period": 20
+        }
+      },
+      "right": {
+        "type": "binary_op",
+        "operator": ">",
+        "left": {
+          "type": "indicator",
+          "name": "rsi",
+          "series": "close",
+          "period": 14
+        },
+        "right": 80
+      }
+    }
+  ]
+}
+
+--- Code Generation ---
+[OK] Python evaluator function generated successfully
+
+--- Signal Generation ---
+[OK] Generated signals:
+  - Entry signals: 29 days
+  - Exit signals: 13 days
+
+  Sample signals (first 30 days with any signal):
+            entry   exit
+date                    
+2023-01-04  False   True
+2023-01-05   True   True
+2023-01-06   True   True
+2023-01-09   True   True
+2023-01-10   True   True
+2023-01-11   True   True
+2023-01-12   True   True
+2023-01-13  False   True
+2023-01-16   True  False
+2023-01-17   True  False
+2023-01-18   True  False
+2023-06-26   True  False
+2023-08-15   True  False
+2023-08-16   True  False
+2023-08-22   True  False
+2023-08-23   True  False
+2023-09-06   True  False
+2023-09-08   True  False
+2023-09-18   True  False
+2023-09-19   True  False
+2023-09-20   True  False
+2023-10-24   True  False
+2023-10-25   True  False
+2023-10-26  False   True
+2023-10-27  False   True
+2023-10-30   True   True
+2023-11-01   True  False
+2023-11-02   True  False
+2023-11-03  False   True
+2023-11-06   True   True
+
+--- Backtest Results ---
+[OK] Backtest completed:
+  - Total Return: $4,961.61 (4.96%)
+  - Max Drawdown: $5,885.76 (5.64%)
+  - Number of Trades: 9
+  - Win Rate: 44.44%
+  - Average Return per Trade: 0.55%
+  - Sharpe Ratio: 3.18
+
+  Trade Log:
+    Trade 1:
+      Enter: 2023-01-05 at $105.32
+      Exit:  2023-01-06 at $104.77
+      P&L: $-0.55 (-0.52%)
+    Trade 2:
+      Enter: 2023-01-06 at $104.77
+      Exit:  2023-01-09 at $104.44
+      P&L: $-0.33 (-0.31%)
+    Trade 3:
+      Enter: 2023-01-09 at $104.44
+      Exit:  2023-01-10 at $106.96
+      P&L: $2.52 (2.41%)
+    Trade 4:
+      Enter: 2023-01-10 at $106.96
+      Exit:  2023-01-11 at $109.08
+      P&L: $2.12 (1.98%)
+    Trade 5:
+      Enter: 2023-01-11 at $109.08
+      Exit:  2023-01-12 at $108.36
+      P&L: $-0.72 (-0.66%)
+    Trade 6:
+      Enter: 2023-01-12 at $108.36
+      Exit:  2023-01-13 at $109.90
+      P&L: $1.54 (1.42%)
+    Trade 7:
+      Enter: 2023-01-16 at $108.70
+      Exit:  2023-10-26 at $104.64
+      P&L: $-4.06 (-3.74%)
+    Trade 8:
+      Enter: 2023-10-30 at $105.59
+      Exit:  2023-11-03 at $103.50
+      P&L: $-2.09 (-1.98%)
+    Trade 9:
+      Enter: 2023-11-06 at $109.64
+      Exit:  2023-12-29 at $116.61
+      P&L: $6.97 (6.36%)
+
+================================================================================
+EXAMPLE 7: Price Breakout with Volume Spike
+================================================================================
+
+--- DSL Code ---
+ENTRY:
+close > last_week(high) AND volume > 1500000
+
+EXIT:
+close < last_week(low)
+
+--- Parsed AST ---
+{
+  "entry": [
+    {
+      "type": "boolean_op",
+      "operator": "AND",
+      "left": {
+        "type": "binary_op",
+        "operator": ">",
+        "left": {
+          "type": "series",
+          "value": "close"
+        },
+        "right": {
+          "type": "function_call",
+          "name": "last_week",
+          "args": [
+            {
+              "type": "series",
+              "value": "high"
+            }
+          ]
+        }
+      },
+      "right": {
+        "type": "binary_op",
+        "operator": ">",
+        "left": {
+          "type": "series",
+          "value": "volume"
+        },
+        "right": 1500000
+      }
+    }
+  ],
+  "exit": [
+    {
+      "type": "binary_op",
+      "operator": ">",
+      "left": {
+        "type": "series",
+        "value": "close"
+      },
+      "right": {
+        "type": "function_call",
+        "name": "last_week",
+        "args": [
+          {
+            "type": "series",
+            "value": "low"
+          }
+        ]
+      }
+    }
+  ]
+}
+
+--- Code Generation ---
+[OK] Python evaluator function generated successfully
+
+--- Signal Generation ---
+[OK] Generated signals:
+  - Entry signals: 8 days
+  - Exit signals: 156 days
+
+  Sample signals (first 30 days with any signal):
+            entry  exit
+date                   
+2023-01-11  False  True
+2023-01-12  False  True
+2023-01-13  False  True
+2023-01-16  False  True
+2023-01-17  False  True
+2023-01-18  False  True
+2023-02-14  False  True
+2023-02-15  False  True
+2023-02-16  False  True
+2023-02-17  False  True
+2023-02-21  False  True
+2023-03-16  False  True
+2023-03-17  False  True
+2023-03-20  False  True
+2023-03-21  False  True
+2023-03-22  False  True
+2023-03-23  False  True
+2023-03-24  False  True
+2023-03-27  False  True
+2023-03-28  False  True
+2023-04-03  False  True
+2023-04-04  False  True
+2023-04-05  False  True
+2023-04-06  False  True
+2023-04-07  False  True
+2023-04-10  False  True
+2023-04-11  False  True
+2023-04-12  False  True
+2023-04-13  False  True
+2023-04-14  False  True
+
+--- Backtest Results ---
+[OK] Backtest completed:
+  - Total Return: $1,625.66 (1.63%)
+  - Max Drawdown: $4,580.17 (4.52%)
+  - Number of Trades: 8
+  - Win Rate: 50.00%
+  - Average Return per Trade: 0.20%
+  - Sharpe Ratio: 1.15
+
+  Trade Log:
+    Trade 1:
+      Enter: 2023-06-21 at $81.79
+      Exit:  2023-06-22 at $80.14
+      P&L: $-1.65 (-2.02%)
+    Trade 2:
+      Enter: 2023-08-23 at $88.60
+      Exit:  2023-08-24 at $88.36
+      P&L: $-0.24 (-0.27%)
+    Trade 3:
+      Enter: 2023-09-08 at $92.68
+      Exit:  2023-09-11 at $93.65
+      P&L: $0.97 (1.05%)
+    Trade 4:
+      Enter: 2023-10-24 at $100.95
+      Exit:  2023-10-25 at $103.51
+      P&L: $2.56 (2.54%)
+    Trade 5:
+      Enter: 2023-11-06 at $109.64
+      Exit:  2023-11-07 at $104.68
+      P&L: $-4.96 (-4.52%)
+    Trade 6:
+      Enter: 2023-11-13 at $105.81
+      Exit:  2023-11-14 at $106.14
+      P&L: $0.33 (0.31%)
+    Trade 7:
+      Enter: 2023-12-19 at $108.28
+      Exit:  2023-12-20 at $114.20
+      P&L: $5.92 (5.47%)
+    Trade 8:
+      Enter: 2023-12-26 at $114.73
+      Exit:  2023-12-27 at $113.67
+      P&L: $-1.06 (-0.92%)
+
+================================================================================
+ALL EXAMPLES COMPLETED
+================================================================================
